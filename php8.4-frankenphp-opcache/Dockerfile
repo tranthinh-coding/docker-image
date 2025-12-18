@@ -67,9 +67,16 @@ RUN apk add --no-cache \
         pcntl \
         gd \
         exif \
-    # Install MongoDB extension via PECL
-    && pecl install mongodb \
+    # Install MongoDB extension from source
+    && git clone --branch v2.1.0 --depth=1 https://github.com/mongodb/mongo-php-driver.git /tmp/mongodb \
+    && cd /tmp/mongodb \
+    && git submodule update --init \
+    && phpize \
+    && ./configure \
+    && make -j$(nproc) \
+    && make install \
     && docker-php-ext-enable mongodb \
+    && rm -rf /tmp/mongodb \
     # Install Redis extension (phpredis release/6.3.0 – pinned)
     && git clone --branch release/6.3.0 --depth=1 https://github.com/phpredis/phpredis.git /tmp/phpredis \
     && cd /tmp/phpredis \
@@ -79,9 +86,15 @@ RUN apk add --no-cache \
     && make install \
     && docker-php-ext-enable redis \
     && rm -rf /tmp/phpredis \
-    # Install Imagick extension via PECL
-    && pecl install imagick \
+    # Install Imagick extension from source
+    && git clone --branch 3.7.0 --depth=1 https://github.com/Imagick/imagick.git /tmp/imagick \
+    && cd /tmp/imagick \
+    && phpize \
+    && ./configure \
+    && make -j$(nproc) \
+    && make install \
     && docker-php-ext-enable imagick \
+    && rm -rf /tmp/imagick \
     # Cleanup
     && apk del $PHPIZE_DEPS \
     && rm -rf /tmp/* /var/cache/apk/*
