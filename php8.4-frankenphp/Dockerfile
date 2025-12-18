@@ -9,6 +9,13 @@ FROM dunglas/frankenphp:php8.4-alpine
 LABEL maintainer="Think"
 LABEL description="PHP 8.4 with FrankenPHP, MongoDB, and common Laravel extensions"
 
+# Generate locale C.UTF-8 for postgres and general locale data
+ENV LANG=C.UTF-8
+
+# set default time zone for server
+ENV TZ=Asia/Ho_Chi_Minh
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 # Install system dependencies
 RUN apk add --no-cache \
     # Build dependencies
@@ -51,16 +58,21 @@ RUN apk add --no-cache \
         intl \
         mbstring \
         bcmath \
-        opcache \
         pcntl \
         gd \
         exif \
     # Install MongoDB extension via PECL
     && pecl install mongodb \
     && docker-php-ext-enable mongodb \
-    # Install Redis extension via PECL
-    && pecl install redis \
+    # Install Redis extension (phpredis release/6.3.0 – pinned)
+    && git clone --branch release/6.3.0 --depth=1 https://github.com/phpredis/phpredis.git /tmp/phpredis \
+    && cd /tmp/phpredis \
+    && phpize \
+    && ./configure \
+    && make -j$(nproc) \
+    && make install \
     && docker-php-ext-enable redis \
+    && rm -rf /tmp/phpredis \
     # Install Imagick extension via PECL
     && pecl install imagick \
     && docker-php-ext-enable imagick \
@@ -76,9 +88,6 @@ RUN echo "upload_max_filesize=100M" >> /usr/local/etc/php/conf.d/uploads.ini \
     && echo "post_max_size=100M" >> /usr/local/etc/php/conf.d/uploads.ini \
     && echo "memory_limit=512M" >> /usr/local/etc/php/conf.d/uploads.ini \
     && echo "max_execution_time=300" >> /usr/local/etc/php/conf.d/uploads.ini
-
-# Set working directory
-WORKDIR /app
 
 # Default command (can be overridden)
 CMD ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]
